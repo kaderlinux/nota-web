@@ -1,13 +1,6 @@
 name: release-tauri-app
 
-on:
-  watch:
-    types: [started]
-  push:
-    branches:
-      - master
-    paths:
-      - '**/package.json'
+on: push
 
 jobs:
   check-build:
