@@ -25,13 +25,17 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Install webkit2gtk (ubuntu only)
-        if: matrix.NAME == 'linux'
-        run: >
+      - name: install webkit2gtk (ubuntu only)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
           sudo apt-get update
           sudo apt-get install -y webkit2gtk-4.0
-      - name: Install app dependencies and build it
-        run: npm ci && npm run build:alpha
+      - run: yarn
+      - name: build nota for tauri app
+        run: yarn build
+      - run: cargo install tauri-bundler --force
+      - name: build tauri app
+        run: yarn tauri:build
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
