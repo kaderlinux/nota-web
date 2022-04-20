@@ -3,128 +3,101 @@ name: release-tauri-app
 on: push
 
 jobs:
-  check-build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: setup node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 12
-      - name: install rust stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - name: install webkit2gtk
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y webkit2gtk-4.0
-      - run: yarn
-      - name: build nota for tauri app
-        run: yarn build
-      - run: cargo install tauri-bundler --force
-      - name: build tauri app
-        run: yarn tauri:build
-
-  create-release:
-    needs: check-build
-    runs-on: ubuntu-latest
-    outputs:
-      RELEASE_UPLOAD_URL: ${{ steps.create_tauri_release.outputs.upload_url }}
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: setup node
-        uses: actions/setup-node@v1
-        with:
-          node-version: 12
-      - name: create release
-        id: create_tauri_release
-        uses: jbolda/create-release@v1.1.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        with:
-          tag_name: ${{ matrix.package.name }}-v${{github.ref_name}}
-          release_name: 'Release nota app v${{github.ref_name}}'
-          body: 'See the assets to download this version and install.'
-          draft: true
-          prerelease: false
-
-  create-and-upload-assets:
-    needs: create-release
-    runs-on: ${{ matrix.platform }}
-    timeout-minutes: 30
-
+  test-tauri:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest]
         include:
-          - platform: ubuntu-latest
-            buildFolder: bundle/deb
-            ext: _0.1.0_amd64.deb
-            compressed: ''
-          - platform: macos-latest
-            buildFolder: bundle/osx
-            ext: .app
-            compressed: .tgz
-          - platform: windows-latest
-            buildFolder: 'bundle/msi'
-            ext: .x64.msi
-            compressed: ''
-
+          - os: macos-latest
+            NAME: mac
+          - os: ubuntu-latest
+            NAME: linux
+          - os: windows-latest
+            NAME: windows
+    runs-on: ${{ matrix.os}}
     steps:
       - uses: actions/checkout@v2
-      - name: setup node
+      - name: Setup node
         uses: actions/setup-node@v1
         with:
-          node-version: 12
-      - name: install rust stable
+          node-version: 16
+      - name: Install rust stable
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          profile: minimal
-      - name: install webkit2gtk (ubuntu only)
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
+      - name: Install webkit2gtk (ubuntu only)
+        if: matrix.NAME == 'linux'
+        run: >
           sudo apt-get update
           sudo apt-get install -y webkit2gtk-4.0
-      - run: yarn
-      - name: build nota for tauri app
-        run: yarn build
-      - run: cargo install tauri-bundler --force
-      - name: build tauri app
-        run: yarn tauri:build
-      - name: compress (macos only)
-        if: matrix.platform == 'macos-latest'
-        working-directory: ${{ format('./src-tauri/target/release/{0}', matrix.buildFolder ) }}
-        run: tar -czf ${{ format('nota{0}{1}', matrix.ext, matrix.compressed ) }} ${{ format('nota{0}', matrix.ext ) }}
-      - name: upload release asset
-        id: upload-release-asset
+      - name: Install app dependencies and build it
+        run: npm ci && npm run build:alpha
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: octokit/request-action@v2.x
+        id: get_latest_release
+        with:
+          route: GET /repos/:repository/releases?per_page=1
+          repository: ${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get upload url
+        id: get_upload_url
+        run: >
+          url=$(echo "$response" | jq -r ".[0].upload_url")
+          echo "::set-output name=url::$url"
+        env:
+          response: ${{ steps.get_latest_release.outputs.data }}
+        shell: bash
+      - name: Get version
+        id: version
+        uses: notiz-dev/github-action-json-property@release
+        with:
+          path: package.json
+          prop_path: version
+      # Windows
+      - name: Upload the windows installer asset
+        if: runner.os == 'Windows'
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
-          upload_url: ${{ needs.create-release.outputs.RELEASE_UPLOAD_URL }}
-          asset_path: ${{ format('./src-tauri/target/release/{0}/nota{1}{2}', matrix.buildFolder, matrix.ext, matrix.compressed ) }}
-          asset_name: ${{ format('nota{0}{1}', matrix.ext, matrix.compressed ) }}
-          asset_content_type: application/zip
-      - name: build tauri app in debug mode
-        run: yarn tauri:build --debug
-      - name: compress (macos only)
-        if: matrix.platform == 'macos-latest'
-        working-directory: ${{ format('./src-tauri/target/debug/{0}', matrix.buildFolder ) }}
-        run: tar -czf ${{ format('nota{0}{1}', matrix.ext, matrix.compressed ) }} ${{ format('nota{0}', matrix.ext ) }}
-      - name: upload release asset with debug mode on
-        id: upload-release-asset-debug-mode
+          upload_url: ${{steps.get_upload_url.outputs.url}}
+          asset_path: ./src-tauri/target/release/authme-lite-${{steps.version.outputs.prop}}-windows-x64-installer.msi
+          asset_name: authme-lite-${{steps.version.outputs.prop}}-windows-x64-installer.msi
+          asset_content_type: application/octet-stream
+      # Linux
+      - name: Upload the linux installer asset
+        if: runner.os == 'Linux'
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
-          upload_url: ${{ needs.create-release.outputs.RELEASE_UPLOAD_URL }}
-          asset_path: ${{ format('./src-tauri/target/debug/{0}/nota{1}{2}', matrix.buildFolder, matrix.ext, matrix.compressed ) }}
-          asset_name: ${{ format('nota-debug{0}{1}', matrix.ext, matrix.compressed ) }}
-          asset_content_type: application/zip
+          upload_url: ${{steps.get_upload_url.outputs.url}}
+          asset_path: ./src-tauri/target/release/authme-lite-${{steps.version.outputs.prop}}-linux-x64-installer.appimage
+          asset_name: authme-lite-${{steps.version.outputs.prop}}-linux-x64-installer.appimage
+          asset_content_type: application/octet-stream
+      # Mac
+      - name: Upload the mac installer asset
+        if: runner.os == 'macOS'
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          upload_url: ${{steps.get_upload_url.outputs.url}}
+          asset_path: ./src-tauri/target/release/authme-lite-${{steps.version.outputs.prop}}-mac-x64-installer.dmg
+          asset_name: authme-lite-${{steps.version.outputs.prop}}-mac-x64-installer.dmg
+          asset_content_type: application/octet-stream
+      - name: Remove useless folders
+        run: >
+          rm -rf src-tauri/target/release/build
+          rm -rf src-tauri/target/release/deps
+          
+          rm -rf src-tauri/target/release/bundle
+        shell: bash
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: authme-lite-latest-alpha-${{matrix.NAME}}-x64-installer-portable
+          path: src-tauri/target/release
