@@ -54,7 +54,10 @@ jobs:
       - name: build nota for tauri app
         run: yarn build
       - name: Tauri build
-        uses: tauri-apps/tauri-action@0e558392ccadcb49bcc89e7df15a400e8f0c954d
+      #   uses: tauri-apps/tauri-action@0e558392ccadcb49bcc89e7df15a400e8f0c954d
+      - run: cargo install tauri-bundler --force
+      - name: build tauri app
+        run: yarn tauri:build
         # enable cache even though failed
         # continue-on-error: true
         env:
