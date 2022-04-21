@@ -29,8 +29,9 @@ jobs:
           sudo apt-get install -y webkit2gtk-4.0
       # - name: install app dependencies and build it
       #   run: yarn && yarn build
-      - name: install app dependencies and build it
+      - name: add node-sass
         run: yarn add node-sass
+      - name: install app dependencies and build it
         run: yarn
         working-directory: ${{env.working-directory}}
       - name: build nota for tauri app
