@@ -2,54 +2,105 @@ name: release-tauri-app
 
 on: push
 
-permissions:
-  pull-requests: write
-  contents: write
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-
+  release:
     strategy:
       matrix:
-        node-version: ['16']
-
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    if: |
+      startsWith(github.repository, 'zzzgydi') &&
+      startsWith(github.ref, 'refs/tags/v')
     steps:
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ matrix.node-version }}
-      # installs dependencies
-    - run: npm ci
-      # build
-    - name: Run ESLint
-      run: npm run lint
-    - name: Ensure project builds
-      run: npm run build
-      # run tests
-    - name: Run jest unit tests
-      run: npm run test:report
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
-      with:
-        token: ${{ secrets.TOKEN }}
-        directory: ./coverage
-        verbose: true
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-  dependabot-auto-merge:
-    needs: [test]
-    runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' }}
-    steps:
-      - name: Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v1.1.1
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          github-token: "${{ secrets.TOKEN }}"
-      - name: Enable auto-merge for Dependabot PRs
-        if: ${{(steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type ==  'version-update:semver-minor')}}
-        run: gh pr merge --auto --squash "$PR_URL"
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+
+      - name: Install Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+
+      - name: Install Dependencies (ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev webkit2gtk-4.0 libappindicator3-dev librsvg2-dev patchelf
+      - name: Get yarn cache dir path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - name: Yarn Cache
+        uses: actions/cache@v2
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      - name: Yarn install and check
+        run: |
+          yarn install --network-timeout 1000000
+          yarn run check
+      - name: Tauri build
+        uses: tauri-apps/tauri-action@0e558392ccadcb49bcc89e7df15a400e8f0c954d
+        # enable cache even though failed
+        # continue-on-error: true
         env:
-          PR_URL: ${{github.event.pull_request.html_url}}
-          GITHUB_TOKEN: ${{secrets.TOKEN}}
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          tagName: v${{github.ref_name}}
+          releaseName: "Clash Verge v${{github.ref_name}}"
+          releaseBody: "More new features are now supported."
+          releaseDraft: false
+          prerelease: true
+
+      - name: Green zip bundle
+        if: matrix.os == 'windows-latest'
+        run: |
+          yarn run portable
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+
+  release-update:
+    needs: release
+    runs-on: macos-latest
+    if: |
+      startsWith(github.repository, 'zzzgydi') &&
+      startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get yarn cache dir path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - name: Yarn Cache
+        uses: actions/cache@v2
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      - name: Yarn install
+        run: yarn install
+
+      - name: Release updater file
+        run: yarn run updater
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
