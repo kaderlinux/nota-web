@@ -54,7 +54,7 @@ jobs:
       - name: build nota for tauri app
         run: yarn build
       - name: Tauri build
-        uses: tauri-apps/tauri-action
+        uses: tauri-apps/tauri-action@v0
         # enable cache even though failed
         # continue-on-error: true
         env:
