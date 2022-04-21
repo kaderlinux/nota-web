@@ -9,7 +9,7 @@ jobs:
       matrix:
         platform: [macos-latest, ubuntu-latest, windows-latest]
     env:
-      working-directory: ./tauri-app
+      working-directory: ./
 
     runs-on: ${{ matrix.platform }}
     steps:
