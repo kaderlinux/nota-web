@@ -29,14 +29,19 @@ jobs:
           sudo apt-get install -y webkit2gtk-4.0
       # - name: install app dependencies and build it
       #   run: yarn && yarn build
+        # working-directory: ${{env.working-directory}}
       - name: add node-sass
         run: yarn add node-sass
       - name: install app dependencies and build it
         run: yarn
         working-directory: ${{env.working-directory}}
       - name: build nota for tauri app
-        run: yarn tauri:build --debug
+        run: yarn build
+        working-directory: ${{env.working-directory}}
       - run: cargo install tauri-bundler --force
+      - name: build tauri app
+        run: yarn tauri:build
+        working-directory: ${{env.working-directory}}
       # - name: build tauri app
       #   run: yarn tauri:build
       - uses: tauri-apps/tauri-action@v0
