@@ -109,7 +109,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.RELEASE_UPLOAD_URL }}
-          asset_path: ${{ format('./src-tauri\target\release\bundle/msi/nota_0.1.0_x64_en-US.msi', matrix.buildFolder, matrix.ext, matrix.compressed ) }}
+          asset_path: ${{ format('./src-tauri/target/release/{0}/nota{1}{2}', matrix.buildFolder, matrix.ext, matrix.compressed ) }}
           asset_name: ${{ format('nota{0}{1}', matrix.ext, matrix.compressed ) }}
           asset_content_type: application/zip
       - name: build tauri app in debug mode
