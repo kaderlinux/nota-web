@@ -31,7 +31,7 @@ jobs:
       #   run: yarn && yarn build
       #   working-directory: ${{env.working-directory}}
       - name: install app dependencies and build it
-      - run: yarn
+        run: yarn
       - name: build nota for tauri app
         run: yarn build
       - run: cargo install tauri-bundler --force
