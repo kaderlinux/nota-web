@@ -40,7 +40,7 @@ jobs:
           releaseName: v${{github.ref_name}}
           releaseDraft: true
           prerelease: false
-          projectPath: ./nota-web
+          projectPath: ./
 
       #  - name: Build and release  
 
