@@ -41,6 +41,7 @@ jobs:
           releaseDraft: true
           prerelease: false
           projectPath: ./
+          releaseId: ${{ needs.create-release.outputs.RELEASE_UPLOAD_ID }}
 
       #  - name: Build and release  
 
