@@ -31,11 +31,23 @@ jobs:
       - run: npm i node-sass
       - run: npm install
 
-      - name: Build and release
-        uses: tauri-apps/tauri-action@b3f03835ca527e9735b386f1b1302ca70714b1e6
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        with:
-          tagName: v${{github.ref_name}}
-          releaseName: v${{github.ref_name}}
-          releaseDraft: true
+      # - name: Build and release
+      #   uses: tauri-apps/tauri-action@b3f03835ca527e9735b386f1b1302ca70714b1e6
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      #   with:
+      #     tagName: v${{github.ref_name}}
+      #     releaseName: v${{github.ref_name}}
+      #     releaseDraft: true
+
+       - name: Build and release  
+
+       uses: tauri-apps/tauri-action@v0
+       env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+       with:
+        tagName: app-v{{github.ref_name}} # the action automatically replaces \_\_VERSION\_\_ with the app version
+        releaseName: "App v{{github.ref_name}}"
+        releaseBody: "See the assets to download this version and install."
+        releaseDraft: true
+        prerelease: false
