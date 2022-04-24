@@ -16,7 +16,7 @@ jobs:
       - name: Node.js setup
         uses: actions/setup-node@v1
         with:
-          node-version: 16
+          node-version: 12
 
       - name: Rust setup
         uses: actions-rs/toolchain@v1
@@ -28,29 +28,32 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y webkit2gtk-4.0
-      - run: npm i node-sass
-      - run: npm install
+      # - run: npm i node-sass
+      # - run: npm install
 
-      - name: Build and release
-        uses: tauri-apps/tauri-action@v0.2
+      # - name: Build and release
+      #   uses: tauri-apps/tauri-action@v0.3
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      #   with:
+      #     tagName: v${{github.ref_name}}
+      #     releaseName: v${{github.ref_name}}
+      #     releaseDraft: true
+      #     prerelease: false
+      #     projectPath: ./
+          # releaseId: ${{ needs.create-release.outputs.RELEASE_UPLOAD_ID }}
+
+      - name: install app dependencies and build it
+        run: yarn install --network-timeout 1000000 && yarn build
+
+      - name: tauri run
+        uses: tauri-apps/tauri-action@v0.3
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v${{github.ref_name}}
           releaseName: v${{github.ref_name}}
           releaseDraft: true
           prerelease: false
-          projectPath: ./
-          # releaseId: ${{ needs.create-release.outputs.RELEASE_UPLOAD_ID }}
 
-      #  - name: Build and release  
 
-      #  uses: tauri-apps/tauri-action@v0
-      #  env:
-      #   GITHUB_TOKEN: ${{ secrets.TOKEN }}
-      #  with:
-      #   tagName: app-v{{github.ref_name}} # the action automatically replaces \_\_VERSION\_\_ with the app version
-      #   releaseName: "App v{{github.ref_name}}"
-      #   releaseBody: "See the assets to download this version and install."
-      #   releaseDraft: true
-      #   prerelease: false
