@@ -1,6 +1,6 @@
 name: "build-installer"
 on:
-  workflow_dispatch:
+  push:
     inputs:
       upload_artifacts:
         description: 'Upload final artifacts to Release?'
