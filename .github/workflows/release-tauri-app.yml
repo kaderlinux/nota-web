@@ -1,9 +1,7 @@
 name: Release
-on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch: ./
+on: push
+
+
 jobs:
   release:
     strategy:
@@ -34,6 +32,7 @@ jobs:
       - run: npm install
 
       - name: Build and release
+        working-directory: ./
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
