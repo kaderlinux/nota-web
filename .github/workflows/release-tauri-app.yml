@@ -71,7 +71,7 @@ jobs:
       - name: build the app - Rust part
         run: yarn tauri:build
       - name: Upload Release Asset
-        if: github.event.inputs.upload_artifacts == 'yes'
+        # if: github.event.inputs.upload_artifacts == 'yes'
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
